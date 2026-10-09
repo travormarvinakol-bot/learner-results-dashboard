@@ -1,0 +1,325 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Learner Results Dashboard</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    *{box-sizing:border-box}
+    body{margin:0;font-family:Arial,sans-serif;background:#f4f7fb;color:#172033}
+    .wrap{max-width:1000px;margin:auto;padding:20px}
+    .card{background:#fff;border-radius:16px;padding:22px;margin:16px 0;box-shadow:0 5px 20px rgba(0,0,0,.08)}
+    h1,h2{margin-top:0}
+    input,button,textarea{width:100%;padding:12px;border-radius:10px;border:1px solid #ccd5e0;font-size:16px}
+    button{cursor:pointer;background:#2563eb;color:#fff;border:0;font-weight:bold;margin-top:10px}
+    button.secondary{background:#475569}
+    button.danger{background:#dc2626}
+    .row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+    table{width:100%;border-collapse:collapse;margin-top:15px}
+    th,td{padding:10px;border-bottom:1px solid #e5e7eb;text-align:left}
+    th{background:#eef3f9}
+    td input{padding:8px}
+    .hidden{display:none}
+    .msg{padding:10px;border-radius:10px;margin:10px 0}
+    .ok{background:#dcfce7;color:#166534}
+    .err{background:#fee2e2;color:#991b1b}
+    .stats{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+    .stat{padding:15px;background:#eef4ff;border-radius:12px;text-align:center}
+    .sharebox{word-break:break-all;background:#f1f5f9;padding:10px;border-radius:10px}
+    @media(max-width:650px){.row,.stats{grid-template-columns:1fr}table{font-size:14px}.wrap{padding:10px}}
+  </style>
+</head>
+<body>
+<div class="wrap">
+  <div class="card">
+    <h1>📚 Learner Results Dashboard</h1>
+    <p>Enter and manage your academic results securely.</p>
+    <div id="message"></div>
+  </div>
+
+  <section id="authCard" class="card">
+    <h2>Login / Register</h2>
+    <div class="row">
+      <div>
+        <label>Email</label>
+        <input id="email" type="email" placeholder="learner@example.com">
+      </div>
+      <div>
+        <label>Password</label>
+        <input id="password" type="password" placeholder="Password">
+      </div>
+    </div>
+    <div class="row">
+      <button onclick="register()">Create account</button>
+      <button class="secondary" onclick="login()">Login</button>
+    </div>
+  </section>
+
+  <section id="dashboard" class="hidden">
+    <div class="card">
+      <h2>👤 Learner Profile</h2>
+      <input id="learnerName" placeholder="Your name">
+      <button onclick="saveProfile()">Save name</button>
+      <button class="secondary" onclick="logout()">Log out</button>
+    </div>
+
+    <div class="card">
+      <h2>📝 My Results</h2>
+      <table>
+        <thead><tr><th>Subject</th><th>Marks</th></tr></thead>
+        <tbody id="resultsBody"></tbody>
+      </table>
+      <button onclick="saveResults()">Save / Update Marks</button>
+    </div>
+
+    <div class="card">
+      <h2>📊 Performance</h2>
+      <div class="stats">
+        <div class="stat"><b id="total">0</b><br>Total</div>
+        <div class="stat"><b id="average">0</b><br>Average</div>
+        <div class="stat"><b id="count">0</b><br>Subjects</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>🔗 Share My Performance</h2>
+      <p>Copy this link and send it to a parent or friend.</p>
+      <div class="sharebox" id="shareLink"></div>
+      <button onclick="copyShareLink()">Copy Link</button>
+    </div>
+  </section>
+
+  <section id="publicView" class="hidden">
+    <div class="card">
+      <h2>📊 Shared Learner Performance</h2>
+      <div id="publicInfo"></div>
+      <table>
+        <thead><tr><th>Subject</th><th>Marks</th></tr></thead>
+        <tbody id="publicResults"></tbody>
+      </table>
+      <div class="stats">
+        <div class="stat"><b id="publicTotal">0</b><br>Total</div>
+        <div class="stat"><b id="publicAverage">0</b><br>Average</div>
+      </div>
+      <h3>💬 Comment</h3>
+      <textarea id="commentText" rows="4" placeholder="Write a comment..."></textarea>
+      <button onclick="submitComment()">Post Comment</button>
+      <div id="comments"></div>
+    </div>
+  </section>
+</div>
+
+<script>
+const SUPABASE_URL = "https://myfafxoozmdajxlmvffn.supabase.co";
+const SUPABASE_KEY = "sb_publishable_AUcne31QppBNRDzfgMsYqg_slGhAT08";
+const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+const SUBJECTS = [
+  "BIOLOGY","CHEMISTRY","CRE","ENGLISH","GEOGRAPHY",
+  "HISTORY","ICT","MATHEMATICS","PHYSICS"
+];
+
+let currentUser = null;
+let currentLearnerId = null;
+
+function message(text, type="ok"){
+  document.getElementById("message").innerHTML =
+    `<div class="msg ${type}">${escapeHtml(text)}</div>`;
+}
+
+function escapeHtml(s){
+  return String(s ?? "").replace(/[&<>"']/g,m=>({
+    "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"
+  }[m]));
+}
+
+async function register(){
+  const email=document.getElementById("email").value.trim();
+  const password=document.getElementById("password").value;
+  if(!email || password.length<6){
+    message("Enter an email and a password of at least 6 characters.","err"); return;
+  }
+  const {data,error}=await db.auth.signUp({email,password});
+  if(error){message(error.message,"err");return;}
+  message("Account created. If email confirmation is enabled, confirm your email before logging in.");
+  if(data.session) await startApp(data.session.user);
+}
+
+async function login(){
+  const email=document.getElementById("email").value.trim();
+  const password=document.getElementById("password").value;
+  const {data,error}=await db.auth.signInWithPassword({email,password});
+  if(error){message(error.message,"err");return;}
+  await startApp(data.user);
+}
+
+async function startApp(user){
+  currentUser=user;
+  document.getElementById("authCard").classList.add("hidden");
+  document.getElementById("dashboard").classList.remove("hidden");
+
+  // The current schema links learners.id to auth.uid().
+  const {data: learner,error}=await db.from("learners").select("*").eq("id",user.id).maybeSingle();
+  if(error){message(error.message,"err");return;}
+
+  if(!learner){
+    const {data:newLearner,error:insertError}=await db.from("learners")
+      .insert({id:user.id,email:user.email})
+      .select().single();
+    if(insertError){message(insertError.message,"err");return;}
+    currentLearnerId=newLearner.id;
+  }else{
+    currentLearnerId=learner.id;
+    document.getElementById("learnerName").value=learner.name || "";
+  }
+
+  buildSubjectRows();
+  await loadResults();
+  updateShareLink();
+}
+
+function buildSubjectRows(existing={}){
+  document.getElementById("resultsBody").innerHTML=SUBJECTS.map(s=>`
+    <tr>
+      <td>${s}</td>
+      <td><input class="mark" data-subject="${s}" type="number" min="0" max="100"
+        value="${existing[s] ?? ""}" placeholder="0-100"></td>
+    </tr>
+  `).join("");
+}
+
+async function loadResults(){
+  const {data,error}=await db.from("results")
+    .select("subject,marks").eq("learner_id",currentLearnerId);
+  if(error){message(error.message,"err");return;}
+  const map={};
+  (data||[]).forEach(r=>map[r.subject]=r.marks);
+  buildSubjectRows(map);
+  calculate(data||[]);
+}
+
+async function saveProfile(){
+  const name=document.getElementById("learnerName").value.trim();
+  const {error}=await db.from("learners").update({name}).eq("id",currentLearnerId);
+  if(error){message(error.message,"err");return;}
+  message("Name saved successfully.");
+  updateShareLink();
+}
+
+async function saveResults(){
+  const inputs=[...document.querySelectorAll(".mark")];
+  const rows=[];
+  for(const input of inputs){
+    const raw=input.value.trim();
+    if(raw==="") continue;
+    const marks=Number(raw);
+    if(!Number.isInteger(marks) || marks<0 || marks>100){
+      message("Marks must be whole numbers from 0 to 100.","err"); return;
+    }
+    rows.push({learner_id:currentLearnerId,subject:input.dataset.subject,marks});
+  }
+
+  const {error:delError}=await db.from("results").delete().eq("learner_id",currentLearnerId);
+  if(delError){message(delError.message,"err");return;}
+
+  if(rows.length){
+    const {error}=await db.from("results").insert(rows);
+    if(error){message(error.message,"err");return;}
+  }
+  message("Marks saved successfully.");
+  calculate(rows);
+}
+
+function calculate(rows){
+  const valid=rows.filter(r=>Number.isFinite(Number(r.marks)));
+  const total=valid.reduce((a,r)=>a+Number(r.marks),0);
+  const avg=valid.length ? total/valid.length : 0;
+  document.getElementById("total").textContent=total;
+  document.getElementById("average").textContent=avg.toFixed(1);
+  document.getElementById("count").textContent=valid.length;
+}
+
+function updateShareLink(){
+  if(!currentLearnerId) return;
+  const url=location.origin+location.pathname+"?learner="+encodeURIComponent(currentLearnerId);
+  document.getElementById("shareLink").textContent=url;
+}
+
+async function copyShareLink(){
+  try{
+    await navigator.clipboard.writeText(document.getElementById("shareLink").textContent);
+    message("Share link copied.");
+  }catch(e){message("Copy failed. Select and copy the link manually.","err");}
+}
+
+async function logout(){
+  await db.auth.signOut();
+  location.reload();
+}
+
+async function loadPublic(learnerId){
+  document.getElementById("authCard").classList.add("hidden");
+  document.getElementById("dashboard").classList.add("hidden");
+  document.getElementById("publicView").classList.remove("hidden");
+
+  const {data:learner,error}=await db.from("learners").select("id,name").eq("id",learnerId).maybeSingle();
+  if(error){document.getElementById("publicInfo").textContent=error.message;return;}
+  if(!learner){document.getElementById("publicInfo").textContent="Learner not found.";return;}
+
+  document.getElementById("publicInfo").innerHTML=`Results for <b>${escapeHtml(learner.name || "Learner")}</b>`;
+
+  const {data:results,error:rError}=await db.from("results").select("subject,marks")
+    .eq("learner_id",learnerId);
+  if(rError){document.getElementById("publicInfo").textContent=rError.message;return;}
+
+  document.getElementById("publicResults").innerHTML=(results||[]).map(r=>
+    `<tr><td>${escapeHtml(r.subject)}</td><td>${escapeHtml(r.marks)}</td></tr>`).join("");
+
+  const total=(results||[]).reduce((a,r)=>a+Number(r.marks),0);
+  const avg=results?.length ? total/results.length : 0;
+  document.getElementById("publicTotal").textContent=total;
+  document.getElementById("publicAverage").textContent=avg.toFixed(1);
+
+  // Comments require a comments table and appropriate RLS policies.
+  // This function will report clearly if that table has not yet been created.
+  window.publicLearnerId=learnerId;
+  await loadComments(learnerId);
+}
+
+async function loadComments(learnerId){
+  const box=document.getElementById("comments");
+  const {data,error}=await db.from("comments").select("comment,created_at")
+    .eq("learner_id",learnerId).order("created_at",{ascending:false});
+  if(error){
+    box.innerHTML="<p>Comments are not enabled yet. The results sharing still works.</p>";
+    return;
+  }
+  box.innerHTML=(data||[]).map(c=>
+    `<div class="card"><p>${escapeHtml(c.comment)}</p><small>${escapeHtml(c.created_at)}</small></div>`
+  ).join("") || "<p>No comments yet.</p>";
+}
+
+async function submitComment(){
+  const text=document.getElementById("commentText").value.trim();
+  if(!text){message("Write a comment first.","err");return;}
+  const {error}=await db.from("comments").insert({
+    learner_id:window.publicLearnerId,
+    comment:text
+  });
+  if(error){message("Comments are not enabled yet. Create the comments table first.","err");return;}
+  document.getElementById("commentText").value="";
+  await loadComments(window.publicLearnerId);
+}
+
+db.auth.getSession().then(async ({data})=>{
+  if(data.session) await startApp(data.session.user);
+  else{
+    const params=new URLSearchParams(location.search);
+    const learner=params.get("learner");
+    if(learner) await loadPublic(learner);
+  }
+});
+</script>
+</body>
+</html>
