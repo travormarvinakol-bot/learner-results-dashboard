@@ -1,0 +1,22 @@
+*{box-sizing:border-box}
+body{margin:0;font-family:Arial,Helvetica,sans-serif;background:#f4f7fb;color:#182230}
+.topbar{background:#173b75;color:#fff;padding:16px 5%;display:flex;justify-content:space-between;align-items:center}
+.brand{font-size:20px;font-weight:700}
+.container{width:min(1050px,94%);margin:25px auto 50px}
+.card{background:#fff;border-radius:18px;padding:24px;margin-bottom:20px;box-shadow:0 5px 24px rgba(20,40,80,.08)}
+.auth-card{max-width:520px;margin:50px auto}
+h1,h2{margin-top:0}
+label{display:block;font-weight:700;margin:14px 0 7px}
+input,textarea{width:100%;border:1px solid #ccd5e2;border-radius:10px;padding:12px;font-size:15px;background:#fff}
+input:focus,textarea:focus{outline:2px solid #a9c7f5;border-color:#7da8e8}
+.btn{border:0;border-radius:10px;padding:12px 17px;font-weight:700;cursor:pointer;margin-top:15px}
+.primary{background:#173b75;color:#fff}.green{background:#18794e;color:#fff}.danger{background:#b42318;color:#fff}
+.tabs{display:flex;gap:8px;margin:20px 0}.tab{border:0;background:#edf2f8;padding:10px 16px;border-radius:9px;cursor:pointer;font-weight:700}.tab.active{background:#173b75;color:#fff}
+.hidden{display:none!important}.muted{color:#667085}.eyebrow{font-size:12px;letter-spacing:1.5px;font-weight:800;color:#526581}
+.two-col{display:grid;grid-template-columns:1fr 1fr;gap:15px}.section-heading{display:flex;justify-content:space-between;align-items:center;gap:15px}
+.table-wrap{overflow-x:auto}table{width:100%;border-collapse:collapse;margin-top:10px}th,td{padding:13px 10px;border-bottom:1px solid #e5eaf0;text-align:left}th{background:#edf3fa}
+.mark-input{width:120px}.grade{font-weight:700}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:20px}.stats div{background:#f0f5fb;border-radius:13px;padding:16px;text-align:center}.stats span{display:block;color:#667085;font-size:13px}.stats strong{font-size:25px;display:block;margin-top:5px}
+.hero{display:flex;justify-content:space-between;gap:20px;align-items:center}.share-box{width:min(450px,100%)}.share-box input{margin-top:8px}
+.message{font-weight:700;min-height:20px}.comment{border-bottom:1px solid #e5eaf0;padding:13px 0}.comment:last-child{border-bottom:0}.comment-date{font-size:12px;color:#667085;margin-top:5px}
+@media(max-width:700px){.two-col,.stats{grid-template-columns:1fr}.hero,.section-heading{display:block}.share-box{margin-top:15px}.container{width:96%}.card{padding:18px}}
